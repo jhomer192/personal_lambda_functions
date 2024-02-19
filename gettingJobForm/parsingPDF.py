@@ -1,20 +1,57 @@
 import pdfplumber
 import re
 
+def get_month_from_day(month):
+    if month == "January":
+        return "01"
+    elif month == "February":
+        return "02"
+    elif month == "March":
+        return "03"
+    elif month == "April":
+        return "04"
+    elif month == "May":
+        return "05"
+    elif month == "June":
+        return "06"
+    elif month == "July":
+        return "07"
+    elif month == "August":
+        return "08"
+    elif month == "September":
+        return "09"
+    elif month == "October":
+        return "10"
+    elif month == "November":
+        return "11"
+    elif month == "December":
+        return "12"
+    else:
+        return "Invalid month"
+def add_0(day):
+    if len(day) == 1:
+        return "0" + day
+    else:
+        return day
 
 def process_box(dict, text):
     split_string = re.split(r'[:\n]', text)
     if len(split_string) == 2:
         dict[split_string[0]] = split_string[1]
     elif len(split_string) > 2:
-        dict["header"] = split_string
+        name_split = split_string[0].split(" ")
+        dict["First name"] = name_split[0]
+        dict["Last name"] = name_split[1]
+        raw_date = split_string[2].split(" ")
+        dict["Submission Date"] = get_month_from_day(raw_date[0]) + "/" + add_0(raw_date[1].replace(",", "")) + "/" + raw_date[2].replace(",", "")
+        dict["Submission Time"] = raw_date[3] + ":" + split_string[3][:5]
         
     
 def get_dict_from_pdf(filename):
     with pdfplumber.open(filename) as pdf:
    
         cur_form_data = {}
-        cur_form_data["form title"] = pdf.pages[0].extract_text().split("\n")[0]
+        cur_form_data["client"] = pdf.pages[0].extract_text().split("\n")[0].split(" ")[0]
         first = True
         for page in pdf.pages:
             if not first:

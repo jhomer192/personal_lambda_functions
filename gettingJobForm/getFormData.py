@@ -75,14 +75,17 @@ def singular_email(imap_server, emailid, semaphore, result):
             filename = part.get_filename()
             if filename and filename.index(".pdf") != -1:
                 dictToSpawn = get_pdf_from_email(filename, part)
-                result.append(dictToSpawn)
+                if dictToSpawn["client"] in result:
+                    result[dictToSpawn["client"]].append(dictToSpawn)
+                else:
+                    result[dictToSpawn["client"]] = [dictToSpawn]
     semaphore.release()
     
 def process_emails(event, context):
     imap_server = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
     imap_server.login(EMAIL, PASSWORD)
     imap_server.select('INBOX')
-    result = []
+    result = {}
     status, messages = imap_server.search(None, 'UNSEEN')
     semaphore = threading.Semaphore(0)
     threads = []
@@ -104,4 +107,3 @@ def process_emails(event, context):
         semaphore.acquire()
     imap_server.logout()
     return result
-print(process_emails(5,5))
