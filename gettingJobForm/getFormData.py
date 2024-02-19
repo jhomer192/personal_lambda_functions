@@ -62,33 +62,35 @@ def forward_email(message, reciepent):
     smtp_server.sendmail(EMAIL, reciepent, forward_message.as_string())
     smtp_server.quit()
 
-def singular_email(imap_server, emailid, semaphore):
+def singular_email(imap_server, emailid, semaphore, result):
+    
     status, data = imap_server.fetch(emailid, '(RFC822)')
     raw_email = data[0][1]
     message = email.message_from_bytes(raw_email)
     #get_pdf_from_email
-    if message['From'] == 'Ohm App <noreply@reports.connecteam.com>':
+    if message['From'] == 'OhmEV App <noreply@reports.connecteam.com>':
         for part in message.walk():
             if part.get_content_maintype() == 'multipart':
                 continue
             filename = part.get_filename()
             if filename and filename.index(".pdf") != -1:
                 dictToSpawn = get_pdf_from_email(filename, part)
-                print(dictToSpawn)
+                result.append(dictToSpawn)
     semaphore.release()
+    
 def process_emails(event, context):
     imap_server = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
     imap_server.login(EMAIL, PASSWORD)
     imap_server.select('INBOX')
+    result = []
     status, messages = imap_server.search(None, 'UNSEEN')
     semaphore = threading.Semaphore(0)
     threads = []
     if status == 'OK':
         emailids = messages[0].split()
-        print(emailids)
 
         for emailid in emailids:
-            thread = threading.Thread(target=singular_email(imap_server, emailid, semaphore))
+            thread = threading.Thread(target=singular_email(imap_server, emailid, semaphore, result))
             thread.start()
             threads.append(thread)
             
@@ -101,4 +103,5 @@ def process_emails(event, context):
     for _ in range(len(threads)):
         semaphore.acquire()
     imap_server.logout()
-process_emails(5,5)
+    return result
+print(process_emails(5,5))
