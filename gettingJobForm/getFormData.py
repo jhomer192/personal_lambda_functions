@@ -9,8 +9,9 @@ import mimetypes
 import tempfile
 import os
 import parsingPDF
+import parsingHTMShift
 import shutil
-import threading
+from bs4 import BeautifulSoup
 # Outlook.com IMAP server settings
 IMAP_SERVER = 'outlook.office365.com'
 IMAP_PORT = 993
@@ -62,40 +63,62 @@ def forward_email(message, reciepent):
     smtp_server.sendmail(EMAIL, reciepent, forward_message.as_string())
     smtp_server.quit()
 
-def singular_email(imap_server, emailid, semaphore, result):
+def singular_email(imap_server, emailid, clientData, shiftData, shiftIDs):
     
     status, data = imap_server.fetch(emailid, '(RFC822)')
     raw_email = data[0][1]
     message = email.message_from_bytes(raw_email)
     #get_pdf_from_email
-    if message['From'] == 'OhmEV App <noreply@reports.connecteam.com>':
+    # print(f"parsing for right location with {message["From"]} and {message["Subject"]}")
+    if message['From'] == 'OhmEV App <noreply@reports.connecteam.com>': #form report
+        # print("found report related email")
         for part in message.walk():
             if part.get_content_maintype() == 'multipart':
                 continue
             filename = part.get_filename()
-            if filename and filename.index(".pdf") != -1:
+            if filename and ".pdf" in filename:
                 dictToSpawn = get_pdf_from_email(filename, part)
-                if dictToSpawn["client"] in result:
-                    result[dictToSpawn["client"]].append(dictToSpawn)
+                if dictToSpawn["client"] in clientData:
+                    clientData[dictToSpawn["client"]].append(dictToSpawn)
                 else:
-                    result[dictToSpawn["client"]] = [dictToSpawn]
-    semaphore.release()
+                    clientData[dictToSpawn["client"]] = [dictToSpawn]
+    elif message['From'] == 'Connecteam <noreply@connecteam.com>' and " shift " in message["Subject"]:
+        # print("found shift related email")
+        for part in message.walk():
+            content_type = part.get_content_type()
+            content_disposition = str(part.get("Content-Disposition"))
+            if "attachment" not in content_disposition:
+                # Content type should be text/plain or text/html
+                if content_type == "text/html":
+                    # Convert HTML to plain text
+                    soup = BeautifulSoup(part.get_payload(decode=True).decode(), 'html.parser')
+                    shift_op_to_add = parsingHTMShift.get_singular_shift_dict(soup.get_text(), message["Subject"])
+                    if shift_op_to_add["ticketID"] in shiftIDs:
+                        index_to_remove = None
+                        for i, d in enumerate(shiftData):
+                            if d.get("ticketID") == shift_op_to_add["ticketID"]:
+                                index_to_remove = i
+                                break
+                        if index_to_remove is not None:
+                            del shiftData[index_to_remove]
+                    else: 
+                        shiftIDs.append(shift_op_to_add["ticketID"])
+                    shiftData.append(shift_op_to_add)
     
 def process_emails(event, context):
     imap_server = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
     imap_server.login(EMAIL, PASSWORD)
     imap_server.select('INBOX')
-    result = {}
+    clientData = {}
+    shiftData = []
+    shiftIDs = []
     status, messages = imap_server.search(None, 'UNSEEN')
-    semaphore = threading.Semaphore(0)
-    threads = []
     if status == 'OK':
         emailids = messages[0].split()
 
         for emailid in emailids:
-            thread = threading.Thread(target=singular_email(imap_server, emailid, semaphore, result))
-            thread.start()
-            threads.append(thread)
+            singular_email(imap_server, emailid, clientData, shiftData, shiftIDs)
+            
             
                         #Now that we have a raw dict signal another service to handle it
 
@@ -103,7 +126,6 @@ def process_emails(event, context):
            
     #         imap_server.store(emailid, '+FLAGS', '\\Deleted');  #marks email for deletion
     # imap_server.expunge(); #deletes all marked for deletion
-    for _ in range(len(threads)):
-        semaphore.acquire()
     imap_server.logout()
-    return result
+    return {"inspections":clientData, "shift_indicators":shiftData}
+# print(process_emails(5,5))
