@@ -92,7 +92,8 @@ def singular_email(imap_server, emailid, clientData, shiftData, shiftIDs):
                 if content_type == "text/html":
                     # Convert HTML to plain text
                     soup = BeautifulSoup(part.get_payload(decode=True).decode(), 'html.parser')
-                    shift_op_to_add = parsingHTMShift.get_singular_shift_dict(soup.get_text(), message["Subject"])
+                    
+                    shift_op_to_add = parsingHTMShift.get_singular_shift_dict(soup.get_text(), message["Subject"], message["Date"])
                     if shift_op_to_add["ticketID"] in shiftIDs:
                         index_to_remove = None
                         for i, d in enumerate(shiftData):
@@ -128,4 +129,4 @@ def process_emails(event, context):
     # imap_server.expunge(); #deletes all marked for deletion
     imap_server.logout()
     return {"inspections":clientData, "shift_indicators":shiftData}
-# print(process_emails(5,5))
+print(process_emails(5,5))

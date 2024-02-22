@@ -1,8 +1,12 @@
 
-def get_singular_shift_dict(plainTextHTML, subject):
+def get_singular_shift_dict(plainTextHTML, subject, date):
     if "Level2" in plainTextHTML: #ensuring it is a level2 
+        
         if " accepted " in subject: #accept
             toAdd = {}
+            date_split = date.split(" ")
+            toAdd["Date"] = date_split[1] + " " + date_split[2] + " " + date_split[3]
+            toAdd["Time"] = date_split[4]
             split_subject = subject.split(" ")
             toAdd["operation"] = "accepted"
             toAdd["First"] = split_subject[0]
@@ -19,6 +23,9 @@ def get_singular_shift_dict(plainTextHTML, subject):
 
         elif " completed " in subject: #completed
             toAdd = {}
+            date_split = date.split(" ")
+            toAdd["Date"] = date_split[1] + " " + date_split[2] + " " + date_split[3]
+            toAdd["Time"] = date_split[4]
             split_subject = subject.split(" ")
             toAdd["operation"] = "completed"
             toAdd["First"] = split_subject[0]
