@@ -58,6 +58,9 @@ def get_dict_from_pdf(filename):
                 process_box(cur_form_data, page.extract_text().split("\n")[0])
             
             tables = page.extract_tables()
+            if not tables:
+                for item in page.extract_text().split("\n"):
+                    process_box(cur_form_data, item)
             first = False
             for table in tables:
                 for row in table:
