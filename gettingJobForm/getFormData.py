@@ -94,17 +94,18 @@ def singular_email(imap_server, emailid, clientData, shiftData, shiftIDs):
                     soup = BeautifulSoup(part.get_payload(decode=True).decode(), 'html.parser')
                     
                     shift_op_to_add = parsingHTMShift.get_singular_shift_dict(soup.get_text(), message["Subject"], message["Date"])
-                    if shift_op_to_add["ticketID"] in shiftIDs:
-                        index_to_remove = None
-                        for i, d in enumerate(shiftData):
-                            if d.get("ticketID") == shift_op_to_add["ticketID"]:
-                                index_to_remove = i
-                                break
-                        if index_to_remove is not None:
-                            del shiftData[index_to_remove]
-                    else: 
-                        shiftIDs.append(shift_op_to_add["ticketID"])
-                    shiftData.append(shift_op_to_add)
+                    if shift_op_to_add is not None: #WILL NOT GET READ IF SHIFT EMAILS DON'T CONTAIN LEVEL
+                        if shift_op_to_add["ticketID"] in shiftIDs:
+                            index_to_remove = None
+                            for i, d in enumerate(shiftData):
+                                if d.get("ticketID") == shift_op_to_add["ticketID"]:
+                                    index_to_remove = i
+                                    break
+                            if index_to_remove is not None:
+                                del shiftData[index_to_remove]
+                        else: 
+                            shiftIDs.append(shift_op_to_add["ticketID"])
+                        shiftData.append(shift_op_to_add)
     
 def process_emails(event, context):
     imap_server = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)

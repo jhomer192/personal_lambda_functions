@@ -40,6 +40,7 @@ def process_box(dict, text):
         dict[split_string[0]] = split_string[1]
     elif len(split_string) > 2:
         name_split = split_string[0].split(" ")
+        dict['#'] = int(split_string[1][1:])
         dict["First name"] = name_split[0]
         dict["Last name"] = name_split[1]
         raw_date = split_string[2].split(" ")
@@ -58,9 +59,16 @@ def get_dict_from_pdf(filename):
                 process_box(cur_form_data, page.extract_text().split("\n")[0])
             
             tables = page.extract_tables()
-            if not tables:
-                for item in page.extract_text().split("\n"):
-                    process_box(cur_form_data, item)
+            text = page.extract_text()
+            splitText = text.split("\n")
+            if splitText is not {}:
+                if "What model is the" in splitText[0]: #making sure first item on each page is added is what model doens't work
+                    process_box(cur_form_data, splitText[0]+ ":" + splitText[1])
+                else:
+                    process_box(cur_form_data, splitText[0])
+                if not tables:
+                    for item in text.split("\n"):
+                        process_box(cur_form_data, item)
             first = False
             for table in tables:
                 for row in table:
